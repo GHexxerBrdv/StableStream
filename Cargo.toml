@@ -4,8 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-alloy = { version = "2.0.5", features = ["providers", "rpc-types", "sol-types", "transports"] }
+alloy = { version = "2.0.5", features = ["providers", "rpc-types-eth", "sol-types", "transports", "json-rpc", "pubsub"] }
 anyhow = "1.0.102"
+dotenv = "0.15.0"
 sqlx = { version = "0.9.0", features = ["sqlite", "runtime-tokio"] }
 tokio = { version = "1.52.3", features = ["full"] }
 tracing = "0.1.44"
