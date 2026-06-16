@@ -13,6 +13,22 @@ pub async fn get_last_indexed_block(pool: &SqlitePool, pool_address: &str) -> Re
     Ok(row.map(|r| r.last_indexed_block))
 }
 
+pub async fn update_last_indexed_block(
+    pool: &SqlitePool,
+    last_indexed_block: i64,
+    pool_address: &str,
+) -> Result<()> {
+    sqlx::query!(
+        "UPDATE pool_state SET last_indexed_block = ? WHERE pool_address = ?",
+        last_indexed_block,
+        pool_address
+    )
+    .execute(pool)
+    .await
+    .with_context(|| format!("Failed to update last indexed block for pool: {pool_address}"))?;
+    Ok(())
+}
+
 pub async fn insert_pool_state(
     pool: &SqlitePool,
     pool_address: &str,

@@ -2,7 +2,7 @@ use crate::{
     IStabilizer,
     connection::queries::interact::{
         get_last_indexed_block, insert_liquidity_event, insert_pool_state, insert_swap_event,
-        update_pool_state,
+        update_last_indexed_block, update_pool_state,
     },
 };
 use alloy::{primitives::Address, providers::Provider, rpc::types::eth::Filter};
@@ -55,6 +55,7 @@ pub async fn sync_events(
     let pool_str = pool_address.to_string();
 
     while from_block <= latest_block {
+        info!("Scanning for New Batch");
         let to_block = std::cmp::min(from_block + batch_size - 1, latest_block);
 
         let filter = Filter::new()
@@ -162,6 +163,10 @@ pub async fn sync_events(
             update_pool_state(pool, &pool_str, &usdc_str, &usdt_str, to_block as i64)
                 .await
                 .context("Failed to update pool state")?;
+        } else {
+            update_last_indexed_block(pool, to_block as i64, &pool_str)
+                .await
+                .context("Failed to update cursor")?;
         }
         from_block = to_block + 1;
     }

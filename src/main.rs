@@ -57,6 +57,6 @@ async fn main() -> Result<()> {
                 error!("Error in indexer sync: {:?}", e);
             }
         }
-        tokio::time::sleep(Duration::from_secs(10)).await;
+        tokio::time::sleep(Duration::from_secs(20)).await;
     }
 }
