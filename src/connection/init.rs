@@ -19,6 +19,12 @@ pub async fn init_db(url: &str) -> Result<SqlitePool> {
         .await
         .context("Failed to create pool state table!")?;
 
+    // Create the indexer state table
+    sqlx::query(INDEXER_STATE)
+        .execute(&pool)
+        .await
+        .context("Failed to create indexer state table!")?;
+    
     // Create the swaps Table
     sqlx::query(SWAPS)
         .execute(&pool)
