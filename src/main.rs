@@ -2,7 +2,11 @@ use anyhow::{Context, Result};
 use std::time::Duration;
 mod connection;
 mod controllers;
-use alloy::{primitives::Address, providers::{Provider, ProviderBuilder}, sol};
+use alloy::{
+    primitives::Address,
+    providers::{Provider, ProviderBuilder},
+    sol,
+};
 use connection::init::init_db;
 use controllers::controller::*;
 use tracing::{error, info};
@@ -47,11 +51,23 @@ async fn main() -> Result<()> {
         .with_context(|| "Invalid rpc-url")?;
 
     let provider = ProviderBuilder::new().connect_http(rpc_url);
-    let chain_id = provider.get_chain_id().await.context("Failed to fetch chain id")?;
-    let mut last_indexed_block = get_or_create_cursor(&pool, contract, &provider, chain_id as i64).await?;
+    let chain_id = provider
+        .get_chain_id()
+        .await
+        .context("Failed to fetch chain id")?;
+    let mut last_indexed_block =
+        get_or_create_cursor(&pool, contract, &provider, chain_id as i64).await?;
     info!(last_indexed_block, "Starting indexer at block height ...");
     loop {
-        match sync_events(&pool, contract, &provider, last_indexed_block, chain_id as i64).await {
+        match sync_events(
+            &pool,
+            contract,
+            &provider,
+            last_indexed_block,
+            chain_id as i64,
+        )
+        .await
+        {
             Ok(new_block) => last_indexed_block = new_block,
             Err(e) => {
                 error!("Error in indexer sync: {:?}", e);

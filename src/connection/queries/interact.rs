@@ -12,7 +12,7 @@ pub async fn insert_stabilizer_state(
     block_hash: &str,
     tx_hash: &str,
     log_index: i64,
-    chain_id: i64
+    chain_id: i64,
 ) -> Result<()> {
     sqlx::query!(
         "INSERT INTO stabilizer_state (contract_address, usdc_reserve, usdt_reserve, usdc_price, usdt_price, block_number, block_hash, tx_hash, log_index, chain_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -33,7 +33,11 @@ pub async fn insert_stabilizer_state(
     Ok(())
 }
 
-pub async fn get_cursor<'a>(pool: &SqlitePool, contract_address: &str, chain_id: i64) -> Result<Option<(i64, &'a str)>> {
+pub async fn get_cursor<'a>(
+    pool: &SqlitePool,
+    contract_address: &str,
+    chain_id: i64,
+) -> Result<Option<(i64, &'a str)>> {
     let row = sqlx::query!(
         "SELECT last_indexed_block, last_indexed_block_hash FROM cursor WHERE contract_address = ? AND chain_id = ?",
         contract_address,
@@ -74,7 +78,7 @@ pub async fn update_cursor(
     chain_id: i64,
     last_indexed_block: i64,
     last_indexed_block_hash: &str,
-    last_indexed_block_timestamp: &str
+    last_indexed_block_timestamp: &str,
 ) -> Result<()> {
     sqlx::query!(
         "UPDATE cursor SET last_indexed_block = ?, last_indexed_block_hash = ?, last_indexed_block_timestamp = ? WHERE contract_address = ? AND chain_id = ?",
@@ -90,7 +94,11 @@ pub async fn update_cursor(
     Ok(())
 }
 
-pub async fn get_blocks(pool: &SqlitePool, contract_address: &str, chain_id: i64) -> Result<Option<Vec<(i64, String)>>> {
+pub async fn get_blocks(
+    pool: &SqlitePool,
+    contract_address: &str,
+    chain_id: i64,
+) -> Result<Option<Vec<(i64, String)>>> {
     let rows = sqlx::query!(
         "SELECT block_number, block_hash FROM blocks WHERE contract_address = ? AND  chain_id = ? ORDER BY block_number DESC LIMIT 12",
         contract_address,
@@ -112,8 +120,8 @@ pub async fn insert_block(
     block_number: i64,
     block_hash: &str,
     block_timestamp: i64,
-    chain_id: i64
-)  -> Result<()> {
+    chain_id: i64,
+) -> Result<()> {
     sqlx::query!(
         "INSERT INTO blocks (contract_address, block_number, block_hash, block_timestamp, chain_id) VALUES (?, ?, ?, ?, ?)",
         contract_address,
@@ -200,11 +208,7 @@ pub async fn insert_liquidity_event(
     Ok(())
 }
 
-
-pub async fn perform_removal(
-    pool: &SqlitePool,
-    fork_point: i64
-) -> Result<()> {
+pub async fn perform_removal(pool: &SqlitePool, fork_point: i64) -> Result<()> {
     sqlx::query!(
         "DELETE * FROM liquidity_events where block_number > ?",
         fork_point
@@ -212,19 +216,13 @@ pub async fn perform_removal(
     .execute(pool)
     .await
     .context("Failed to perform removal")?;
-    sqlx::query!(
-        "DELETE * FROM swaps where block_number > ?",
-        fork_point
-    )
-    .execute(pool)
-    .await
-    .context("Failed to perform removal")?;
-    sqlx::query!(
-        "DELETE * FROM blocks where block_number > ?",
-        fork_point
-    )
-    .execute(pool)
-    .await
-    .context("Failed to perform removal")?;
+    sqlx::query!("DELETE * FROM swaps where block_number > ?", fork_point)
+        .execute(pool)
+        .await
+        .context("Failed to perform removal")?;
+    sqlx::query!("DELETE * FROM blocks where block_number > ?", fork_point)
+        .execute(pool)
+        .await
+        .context("Failed to perform removal")?;
     Ok(())
 }

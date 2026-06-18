@@ -1,17 +1,17 @@
-use crate::{
-    IStabilizer,
-    connection::queries::interact::*
+use crate::{IStabilizer, connection::queries::interact::*};
+use alloy::{
+    consensus::BlockHeader, primitives::Address, providers::Provider, rpc::types::eth::Filter,
+    signers::k256::elliptic_curve::rand_core::block,
 };
-use alloy::{consensus::BlockHeader, primitives::Address, providers::Provider, rpc::types::eth::Filter, signers::k256::elliptic_curve::rand_core::block};
 use anyhow::{Context, Result};
-use sqlx::{SqlitePool};
+use sqlx::SqlitePool;
 use tracing::{info, warn};
 
 pub async fn get_or_create_cursor(
     pool: &SqlitePool,
     contract: Address,
     provider: &impl Provider,
-    chain_id: i64
+    chain_id: i64,
 ) -> Result<u64> {
     let contract_address = contract.to_string();
     if let Some((block, _)) = get_cursor(pool, &contract_address, chain_id as i64)
@@ -25,12 +25,23 @@ pub async fn get_or_create_cursor(
             .await
             .context("Failed to fetch block number")?;
 
-        let header = provider.get_header_by_number(alloy::eips::BlockNumberOrTag::Number(latest_block)).await.context("Failed to fetch block hash")?.unwrap();
+        let header = provider
+            .get_header_by_number(alloy::eips::BlockNumberOrTag::Number(latest_block))
+            .await
+            .context("Failed to fetch block hash")?
+            .unwrap();
         let block_hash = header.hash.to_string();
         let block_timestamp = header.timestamp();
-        insert_cursor(pool, &contract_address, latest_block as i64, &block_hash, block_timestamp as i64, chain_id)
-            .await
-            .context("Failed to insert into pool state")?;
+        insert_cursor(
+            pool,
+            &contract_address,
+            latest_block as i64,
+            &block_hash,
+            block_timestamp as i64,
+            chain_id,
+        )
+        .await
+        .context("Failed to insert into pool state")?;
         info!(block = latest_block, "Starting indexer from latest block");
         Ok(latest_block)
     }
@@ -41,7 +52,7 @@ pub async fn sync_events(
     contract: Address,
     provider: &impl Provider,
     last_indexed_block: u64,
-    chain_id: i64
+    chain_id: i64,
 ) -> Result<u64> {
     let latest_block = provider
         .get_block_number()
@@ -125,12 +136,25 @@ pub async fn sync_events(
                     &receiver,
                     block_number,
                     block_timestamp,
-                    chain_id
+                    chain_id,
                 )
                 .await
                 .context("Failed to insert liquidity event")?;
-                insert_stabilizer_state(pool, &contract_address, &usdc_reserve, &usdt_reserve, &usdc_price, &usdt_price, block_number, &block_hash, &tx_hash, log_index, chain_id)
-                    .await.context("Failed to insert stabilizer state")?;
+                insert_stabilizer_state(
+                    pool,
+                    &contract_address,
+                    &usdc_reserve,
+                    &usdt_reserve,
+                    &usdc_price,
+                    &usdt_price,
+                    block_number,
+                    &block_hash,
+                    &tx_hash,
+                    log_index,
+                    chain_id,
+                )
+                .await
+                .context("Failed to insert stabilizer state")?;
                 batch_has_events = true;
                 block_event = true;
             } else if let Ok(event) = log.log_decode::<IStabilizer::LiquidityRemoved>() {
@@ -152,12 +176,25 @@ pub async fn sync_events(
                     &receiver,
                     block_number,
                     block_timestamp,
-                    chain_id
+                    chain_id,
                 )
                 .await
                 .context("Failed to insert liquidity event")?;
-                insert_stabilizer_state(pool, &contract_address, &usdc_reserve, &usdt_reserve, &usdc_price, &usdt_price, block_number, &block_hash, &tx_hash, log_index, chain_id)
-                    .await.context("Failed to insert stabilizer state")?;
+                insert_stabilizer_state(
+                    pool,
+                    &contract_address,
+                    &usdc_reserve,
+                    &usdt_reserve,
+                    &usdc_price,
+                    &usdt_price,
+                    block_number,
+                    &block_hash,
+                    &tx_hash,
+                    log_index,
+                    chain_id,
+                )
+                .await
+                .context("Failed to insert stabilizer state")?;
                 batch_has_events = true;
                 block_event = true;
             } else if let Ok(event) = log.log_decode::<IStabilizer::Exchange>() {
@@ -184,8 +221,21 @@ pub async fn sync_events(
                 )
                 .await
                 .context("Failed to insert swap event")?;
-                insert_stabilizer_state(pool, &contract_address, &usdc_reserve, &usdt_reserve, &usdc_price, &usdt_price, block_number, &block_hash, &tx_hash, log_index, chain_id)
-                    .await.context("Failed to insert stabilizer state")?;
+                insert_stabilizer_state(
+                    pool,
+                    &contract_address,
+                    &usdc_reserve,
+                    &usdt_reserve,
+                    &usdc_price,
+                    &usdt_price,
+                    block_number,
+                    &block_hash,
+                    &tx_hash,
+                    log_index,
+                    chain_id,
+                )
+                .await
+                .context("Failed to insert stabilizer state")?;
                 batch_has_events = true;
                 block_event = true;
             }
@@ -197,19 +247,38 @@ pub async fn sync_events(
                     block_number,
                     &block_hash,
                     block_timestamp,
-                    chain_id
+                    chain_id,
                 )
                 .await
                 .context("Failed to add block")?;
             }
         }
 
-        let block_hash = provider.get_header_by_number(alloy::eips::BlockNumberOrTag::Number(to_block)).await.context("Failed to fetch block header")?.unwrap().hash.to_string();
-        let parent_hash = provider.get_header_by_number(alloy::eips::BlockNumberOrTag::Number(to_block)).await.context("Failed to fetch block header")?.unwrap().parent_hash.to_string();
-        update_cursor(pool, &contract_address, chain_id, to_block as i64, &block_hash, &parent_hash)
+        let block_hash = provider
+            .get_header_by_number(alloy::eips::BlockNumberOrTag::Number(to_block))
             .await
-            .context("Failed to update cursor")?;
-        
+            .context("Failed to fetch block header")?
+            .unwrap()
+            .hash
+            .to_string();
+        let parent_hash = provider
+            .get_header_by_number(alloy::eips::BlockNumberOrTag::Number(to_block))
+            .await
+            .context("Failed to fetch block header")?
+            .unwrap()
+            .parent_hash
+            .to_string();
+        update_cursor(
+            pool,
+            &contract_address,
+            chain_id,
+            to_block as i64,
+            &block_hash,
+            &parent_hash,
+        )
+        .await
+        .context("Failed to update cursor")?;
+
         from_block = to_block + 1;
     }
     Ok(latest_block)
@@ -219,24 +288,52 @@ async fn check_reorg(
     pool: &SqlitePool,
     contract_address: &str,
     chain_id: i64,
-    provider: &impl Provider
-) -> Result<u64>{
+    provider: &impl Provider,
+) -> Result<u64> {
     info!("Checking for reorg");
-    let (last_indexed_block, last_indexed_block_hash) = get_cursor(pool, contract_address, chain_id).await.context("Failed get cursor")?.unwrap();
-    let block_hash = provider.get_header_by_number(alloy::eips::BlockNumberOrTag::Number(last_indexed_block as u64)).await.context("Failed to fetch block header")?.unwrap().hash.to_string();
+    let (last_indexed_block, last_indexed_block_hash) =
+        get_cursor(pool, contract_address, chain_id)
+            .await
+            .context("Failed get cursor")?
+            .unwrap();
+    let block_hash = provider
+        .get_header_by_number(alloy::eips::BlockNumberOrTag::Number(
+            last_indexed_block as u64,
+        ))
+        .await
+        .context("Failed to fetch block header")?
+        .unwrap()
+        .hash
+        .to_string();
     if last_indexed_block_hash != &block_hash {
         warn!("Block reorg detected at block: {last_indexed_block}");
-        handle_reorg(pool, contract_address, chain_id, provider).await.context("Failed handling reorg")?;
+        handle_reorg(pool, contract_address, chain_id, provider)
+            .await
+            .context("Failed handling reorg")?;
     }
     Ok(last_indexed_block as u64)
 }
 
-async fn handle_reorg(pool: &SqlitePool, contract_address: &str, chain_id: i64, provider: &impl Provider) -> Result<i64> {
+async fn handle_reorg(
+    pool: &SqlitePool,
+    contract_address: &str,
+    chain_id: i64,
+    provider: &impl Provider,
+) -> Result<i64> {
     info!("Handling reorg");
-    let blocks = get_blocks(pool, contract_address, chain_id).await.context("Failed to fetch block data")?.unwrap();
+    let blocks = get_blocks(pool, contract_address, chain_id)
+        .await
+        .context("Failed to fetch block data")?
+        .unwrap();
     let mut fork_point = 0;
     for block in blocks {
-        let new_block_hash = provider.get_header_by_number(alloy::eips::BlockNumberOrTag::Number(block.0 as u64)).await.context("Failed to fetch block header")?.unwrap().hash.to_string();
+        let new_block_hash = provider
+            .get_header_by_number(alloy::eips::BlockNumberOrTag::Number(block.0 as u64))
+            .await
+            .context("Failed to fetch block header")?
+            .unwrap()
+            .hash
+            .to_string();
         if new_block_hash == block.1 {
             fork_point = block.0;
         }
@@ -245,8 +342,10 @@ async fn handle_reorg(pool: &SqlitePool, contract_address: &str, chain_id: i64, 
     if fork_point > 0 {
         info!("Fork point detected: {fork_point}");
         warn!("Reindexing from block: {fork_point}");
-        perform_removal(pool, fork_point).await.context("Failed removal")?;
+        perform_removal(pool, fork_point)
+            .await
+            .context("Failed removal")?;
     }
-    
+
     Ok(fork_point)
 }
