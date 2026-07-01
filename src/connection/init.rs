@@ -14,16 +14,21 @@ pub async fn init_db(url: &str) -> Result<SqlitePool> {
         .with_context(|| format!("Failed connecting db with {url}"))?;
 
     // Create the pool state table
-    sqlx::query(POOL_STATE)
+    sqlx::query(STABILIZER_STATE)
         .execute(&pool)
         .await
-        .context("Failed to create pool state table!")?;
+        .context("Failed to create stabilizer state table!")?;
 
     // Create the indexer state table
-    sqlx::query(INDEXER_STATE)
+    sqlx::query(CURSOR)
         .execute(&pool)
         .await
-        .context("Failed to create indexer state table!")?;
+        .context("Failed to create cursor table!")?;
+
+    sqlx::query(BLOCKS)
+        .execute(&pool)
+        .await
+        .context("Failed to create blocks table!")?;
 
     // Create the swaps Table
     sqlx::query(SWAPS)
