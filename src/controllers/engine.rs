@@ -15,19 +15,19 @@ pub async fn get_or_create_cursor(
     chain_id: i64,
 ) -> Result<u64> {
     let contract_address = contract.to_string();
-    if let Some((block, _)) = get_cursor(pool, &contract_address, chain_id as i64)
+    if let Some((cursor, _)) = get_cursor(pool, &contract_address, chain_id as i64)
         .await
         .context("Failed to read last indexed block")?
     {
-        Ok(block as u64)
+        Ok(cursor as u64)
     } else {
-        let latest_block = provider
-            .get_block_number()
-            .await
-            .context("Failed to fetch block number")?;
+        let start_block: u64 = std::env::var("START_BLOCK")
+            .unwrap_or_else(|_| "0".to_string())
+            .parse()
+            .unwrap_or(0);
 
         let block = provider
-            .get_block_by_number(Number(latest_block))
+            .get_block_by_number(Number(start_block))
             .await
             .context("Failed to fetch block")?
             .unwrap();
@@ -39,15 +39,15 @@ pub async fn get_or_create_cursor(
         insert_cursor(
             pool,
             &contract_address,
-            latest_block as i64,
+            start_block as i64,
             &block_hash,
             block_timestamp as i64,
             chain_id,
         )
         .await
         .context("Failed to insert into pool state")?;
-        info!(block = latest_block, "Starting indexer from latest block");
-        Ok(latest_block)
+        info!(start_block, "Starting indexer from block");
+        Ok(start_block)
     }
 }
 
