@@ -19,10 +19,6 @@ sol!(
         event Exchange(
             address token, uint256 amount, uint256 quoteAmount, uint256 fees, address receiver, address feeReceiver
         );
-
-        function addLiquidity(uint256 amountUsdc, uint256 amountUsdt, uint256 minAmountStb, address receiver) external;
-        function removeLiquidity(uint256 amountStb, uint256 minAmountUsdc, uint256 minAmountUsdt, address receiver) external;
-        function exchange(address token, uint256 amount, uint256 minAmountOut, address receiver) external;
         function getStabilizerMatrix()
             external
             returns (uint256 usdcReserveAmount, uint256 usdtReserveAmount, uint256 usdcPrice, uint256 usdtPrice);
