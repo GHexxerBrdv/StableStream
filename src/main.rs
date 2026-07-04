@@ -31,8 +31,7 @@ async fn main() -> Result<()> {
 
     tracing_subscriber::fmt::init();
 
-    let db_url =
-        std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite://./db/indexer.db".to_string());
+    let db_url = std::env::var("DATABASE_URL").unwrap();
     let pool = init_db(&db_url)
         .await
         .with_context(|| "Failed to initialize database")?;

@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 use sqlx::{SqlitePool, sqlite::SqliteConnectOptions};
 use std::str::FromStr;
 
@@ -42,4 +43,14 @@ pub async fn init_db(url: &str) -> Result<SqlitePool> {
         .await
         .context("Failed to create liquidity events table!")?;
     Ok(pool)
+}
+
+pub async fn init_db_beta(url: &str) -> Result<DatabaseConnection> {
+    let mut opt = ConnectOptions::new(url);
+    opt.max_connections(2);
+
+    let db: DatabaseConnection = Database::connect(opt)
+        .await
+        .context("Failed to connect database")?;
+    Ok(db)
 }
