@@ -32,10 +32,10 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let db_url = std::env::var("DATABASE_URL").unwrap();
-    let pool = init_db(&db_url)
+    let db = init_db(&db_url)
         .await
-        .with_context(|| "Failed to initialize database")?;
-    info!("Pool successfully created: {:?}", pool);
+        .with_context(|| "Failed to initialize beta database")?;
+    info!("database successfully created: {:?}", db);
     let contract: Address = std::env::var("CONTRACT_ADDRESS")
         .with_context(|| "missing contract address in .env")?
         .parse()
@@ -51,11 +51,11 @@ async fn main() -> Result<()> {
         .await
         .context("Failed to fetch chain id")?;
     let mut last_indexed_block =
-        get_or_create_cursor(&pool, contract, &provider, chain_id as i64).await?;
+        get_or_create_cursor(&db, contract, &provider, chain_id as i64).await?;
     info!(last_indexed_block, "Starting indexer at block height ...");
     loop {
         match sync_events(
-            &pool,
+            &db,
             contract,
             &provider,
             last_indexed_block,
@@ -68,6 +68,6 @@ async fn main() -> Result<()> {
                 error!("Error in indexer sync: {:?}", e);
             }
         }
-        tokio::time::sleep(Duration::from_secs(20)).await;
+        tokio::time::sleep(Duration::from_secs(30)).await;
     }
 }
