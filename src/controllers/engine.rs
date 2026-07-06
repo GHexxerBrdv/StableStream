@@ -5,17 +5,17 @@ use alloy::{
     providers::Provider, rpc::types::eth::Filter,
 };
 use anyhow::{Context, Result};
-use sqlx::SqlitePool;
+use sea_orm::DatabaseConnection;
 use tracing::info;
 
 pub async fn get_or_create_cursor(
-    pool: &SqlitePool,
+    db: &DatabaseConnection,
     contract: Address,
     provider: &impl Provider,
     chain_id: i64,
 ) -> Result<u64> {
     let contract_address = contract.to_string();
-    if let Some((cursor, _)) = get_cursor(pool, &contract_address, chain_id as i64)
+    if let Some((cursor, _)) = get_cursor(db, &contract_address, chain_id as i64)
         .await
         .context("Failed to read last indexed block")?
     {
@@ -37,7 +37,7 @@ pub async fn get_or_create_cursor(
         let block_timestamp = header.timestamp();
 
         insert_cursor(
-            pool,
+            db,
             &contract_address,
             start_block as i64,
             &block_hash,
@@ -52,7 +52,7 @@ pub async fn get_or_create_cursor(
 }
 
 pub async fn sync_events(
-    pool: &SqlitePool,
+    pool: &DatabaseConnection,
     contract: Address,
     provider: &impl Provider,
     last_indexed_block: u64,
