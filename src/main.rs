@@ -29,7 +29,7 @@ sol!(
 async fn main() -> Result<()> {
     dotenv::dotenv().ok();
 
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt().init();
 
     let db_url = std::env::var("DATABASE_URL").unwrap();
     let db = init_db(&db_url)
